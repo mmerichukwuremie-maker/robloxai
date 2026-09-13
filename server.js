@@ -1,4 +1,4 @@
-```javascript
+
 const express = require("express");
 const cors = require("cors");
 
@@ -20,11 +20,11 @@ if (!ROBLOX_SHARED_SECRET) {
   console.warn("[Backend] WARNING: ROBLOX_SHARED_SECRET is not set.");
 }
 
-app.get("/", (req, res) => {
+app.get("/", function (req, res) {
   res.send("Roblox AI chat backend is running.");
 });
 
-app.get("/health", (req, res) => {
+app.get("/health", function (req, res) {
   res.json({
     ok: true,
     model: MODEL,
@@ -33,7 +33,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.post("/chat", async (req, res) => {
+app.post("/chat", async function (req, res) {
   try {
     if (!GROQ_API_KEY) {
       console.error("[Backend] GROQ_API_KEY is missing.");
@@ -55,7 +55,7 @@ app.post("/chat", async (req, res) => {
       }
     }
 
-    const { messages } = req.body;
+    const messages = req.body.messages;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({
@@ -63,23 +63,29 @@ app.post("/chat", async (req, res) => {
       });
     }
 
-    const cleanMessages = messages
-      .slice(-20)
-      .map((message) => ({
+    const cleanMessages = messages.slice(-20).map(function (message) {
+      return {
         role: message.role === "assistant" ? "assistant" : "user",
         content: String(message.content || "").slice(0, 2000)
-      }));
+      };
+    });
+
+    console.log("[Backend] Sending request to Groq...");
+    console.log("[Backend] Model:", MODEL);
 
     const groqResponse = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${GROQ_API_KEY}`
+          "Authorization": "Bearer " + GROQ_API_KEY
         },
+
         body: JSON.stringify({
           model: MODEL,
+
           messages: [
             {
               role: "system",
@@ -89,8 +95,10 @@ app.post("/chat", async (req, res) => {
                 "Be helpful, fun, and appropriate for a general Roblox audience. " +
                 "Do not produce inappropriate or unsafe content."
             },
+
             ...cleanMessages
           ],
+
           max_completion_tokens: 400
         })
       }
@@ -99,7 +107,7 @@ app.post("/chat", async (req, res) => {
     const responseText = await groqResponse.text();
 
     if (!groqResponse.ok) {
-      console.error("[Backend] Groq API error:");
+      console.error("[Backend] Groq API error");
       console.error("[Backend] Status:", groqResponse.status);
       console.error("[Backend] Response:", responseText);
 
@@ -113,9 +121,9 @@ app.post("/chat", async (req, res) => {
 
     try {
       data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error("[Backend] Failed to parse Groq response:");
-      console.error(responseText);
+    } catch (error) {
+      console.error("[Backend] Could not parse Groq response");
+      console.error("[Backend] Raw response:", responseText);
 
       return res.status(502).json({
         error: "invalid_upstream_response"
@@ -123,13 +131,18 @@ app.post("/chat", async (req, res) => {
     }
 
     const reply =
-      data.choices?.[0]?.message?.content ||
-      "(The AI didn't return a response.)";
+      data &&
+      data.choices &&
+      data.choices[0] &&
+      data.choices[0].message &&
+      data.choices[0].message.content
+        ? data.choices[0].message.content
+        : "(The AI didn't return a response.)";
 
     console.log("[Backend] Groq response received successfully.");
 
     return res.json({
-      reply
+      reply: reply
     });
 
   } catch (error) {
@@ -143,8 +156,7 @@ app.post("/chat", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`[Backend] Listening on port ${PORT}`);
-  console.log(`[Backend] Model: ${MODEL}`);
+app.listen(PORT, "0.0.0.0", function () {
+  console.log("[Backend] Listening on port " + PORT);
+  console.log("[Backend] Model: " + MODEL);
 });
-```
