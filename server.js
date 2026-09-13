@@ -37,6 +37,7 @@ app.post("/chat", async (req, res) => {
   try {
     if (!GROQ_API_KEY) {
       console.error("[Backend] GROQ_API_KEY is missing.");
+
       return res.status(500).json({
         error: "groq_api_key_missing"
       });
@@ -47,6 +48,7 @@ app.post("/chat", async (req, res) => {
 
       if (providedSecret !== ROBLOX_SHARED_SECRET) {
         console.warn("[Backend] Invalid Roblox shared secret.");
+
         return res.status(401).json({
           error: "unauthorized"
         });
